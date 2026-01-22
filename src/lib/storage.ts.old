@@ -1,0 +1,328 @@
+import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+// --- MMKV COMPATIBILITY LAYER ---
+// We use AsyncStorage to replace MMKV to fix the NitroModules crash.
+const storage = {
+    getString: (key: string) => {
+        return null;
+    },
+    set: (key: string, value: string | boolean | number) => {
+        AsyncStorage.setItem(key, String(value)).catch(e => console.error(e));
+    },
+    getBoolean: (key: string) => false,
+    delete: (key: string) => {
+        AsyncStorage.removeItem(key).catch(e => console.error(e));
+    },
+    clearAll: () => {
+        AsyncStorage.clear().catch(e => console.error(e));
+    },
+    getAllKeys: () => []
+};
+
+export { storage };
+
+export const StorageKeys = {
+    USER_DATA: 'user_data',
+    AUTH_TOKEN: 'auth_token',
+    THEME: 'theme',
+    ONBOARDING_COMPLETED: 'onboarding_completed',
+    WIZARD_DATA: 'wizard_data',
+    FOOD_CACHE: 'food_cache',
+    FOOD_CACHE_TIMESTAMP: 'food_cache_timestamp',
+};
+
+// --- LEGACY KEYS ---
+const USER_PROFILE_KEY = 'user_profile_v1';
+const USER_SETTINGS_KEY = 'user_settings_v1';
+const DAILY_LOG_PREFIX = 'daily_log_';
+const FOOD_ITEMS_KEY = 'food_items_v1';
+const STEP_DATA_PREFIX = 'step_data_';
+const STREAK_STATE_KEY = 'streak_state_v1';
+const SUBSCRIPTION_KEY = 'subscription_v1';
+const ACHIEVEMENTS_KEY = 'achievements_v1';
+
+// --- TYPES ---
+export interface UserProfile {
+    name: string;
+    age: number | null;
+    height: number | null;
+    weight: number | null;
+    gender: 'male' | 'female' | 'other';
+    fitnessGoal: 'loss' | 'gain' | 'lean' | 'maintain' | 'recomp' | null;
+    startingWeight: number | null;
+    currentWeight: number | null;
+    targetWeight: number | null;
+    activityFactor: number | null;
+    stepGoal: number;
+    waterGoal: number;
+    bmr: number | null;
+    tdee: number | null;
+    bmi: number | null;
+    isGuest?: boolean;
+    userId?: string;
+    email?: string;
+    plan?: 'free' | 'premium';
+    premiumExpiresAt?: string;
+    streak?: number;
+    streakShields?: number;
+    availableEquipment?: string[];
+    goal?: string;
+    activityLevel?: string;
+    workoutExperience?: string;
+    unitSystem?: 'metric' | 'imperial';
+    lastSmartGoalCheck?: string;
+    healthConnectEnabled?: boolean;
+    hasSeenTutorial?: boolean;
+}
+
+export interface UserSettings {
+    id: string;
+    notifications_enabled: boolean;
+    isOnboarded: boolean;
+    currentWeight: number;
+    activityLevel: number;
+    profile: UserProfile;
+    hasSeenTutorial?: boolean;
+}
+
+export interface DailyLog {
+    date: string;
+    steps: number;
+    water_ml: number;
+    calories_eaten: number;
+    calories_burned: number;
+    workout_done: boolean;
+    notes?: string;
+    ai_hours?: number;
+    mistakes?: string[];
+    shield_used?: boolean;
+    protein_g?: number;
+    carbs_g?: number;
+    fat_g?: number;
+    eatenItems?: Array<{
+        id: string;
+        name: string;
+        calories: number;
+        protein: number;
+        carbs: number;
+        fat: number;
+        timestamp: number;
+    }>;
+}
+
+export interface FoodItem {
+    id: string;
+    name: string;
+    calories: number;
+    emoji?: string;
+}
+
+export interface StepData {
+    date: string;
+    steps: number;
+    baseline: number;
+}
+
+export interface StreakState {
+    currentStreak: number;
+    lastUpdated: string;
+}
+
+export interface SubscriptionData {
+    plan: 'free' | 'premium';
+    userId?: string;
+    email?: string;
+    premiumExpiresAt?: string;
+    createdAt: string;
+    lastUpdated: string;
+}
+
+// --- HELPERS (AsyncStorage Implementation) ---
+
+export const loadUserProfile = async (): Promise<UserProfile | null> => {
+    try {
+        const data = await AsyncStorage.getItem(USER_PROFILE_KEY);
+        return data ? JSON.parse(data) : null;
+    } catch (error) {
+        console.error('Error loading user profile:', error);
+        return null;
+    }
+};
+
+export const saveUserProfile = async (profile: UserProfile): Promise<void> => {
+    try {
+        await AsyncStorage.setItem(USER_PROFILE_KEY, JSON.stringify(profile));
+    } catch (error) {
+        console.error('Error saving user profile:', error);
+    }
+};
+
+export const getUserSettings = async (): Promise<UserSettings | null> => {
+    try {
+        const data = await AsyncStorage.getItem(USER_SETTINGS_KEY);
+        return data ? JSON.parse(data) : null;
+    } catch (error) {
+        console.error('Error getting user settings:', error);
+        return null;
+    }
+};
+
+export const saveUserSettings = async (settings: UserSettings): Promise<void> => {
+    try {
+        await AsyncStorage.setItem(USER_SETTINGS_KEY, JSON.stringify(settings));
+    } catch (error) {
+        console.error('Error saving user settings:', error);
+    }
+};
+
+export const loadDailyLog = async (dateString: string): Promise<DailyLog | null> => {
+    try {
+        const data = await AsyncStorage.getItem(DAILY_LOG_PREFIX + dateString);
+        return data ? JSON.parse(data) : null;
+    } catch (error) {
+        console.error('Error loading daily log:', error);
+        return null;
+    }
+};
+
+export const saveDailyLog = async (log: DailyLog): Promise<void> => {
+    try {
+        await AsyncStorage.setItem(DAILY_LOG_PREFIX + log.date, JSON.stringify(log));
+    } catch (error) {
+        console.error('Error saving daily log:', error);
+    }
+};
+
+export const getDailyLog = async (date: string): Promise<DailyLog | null> => {
+    return loadDailyLog(date);
+};
+
+export const getAllDailyLogs = async (): Promise<DailyLog[]> => {
+    try {
+        const keys = await AsyncStorage.getAllKeys();
+        const logKeys = keys.filter((key) => key.startsWith(DAILY_LOG_PREFIX));
+        const logs: DailyLog[] = [];
+        for (const key of logKeys) {
+            const val = await AsyncStorage.getItem(key);
+            if (val) logs.push(JSON.parse(val));
+        }
+        return logs;
+    } catch (error) {
+        console.error('Error getting all daily logs:', error);
+        return [];
+    }
+};
+
+export const loadFoodItems = async (): Promise<FoodItem[]> => {
+    try {
+        const data = await AsyncStorage.getItem(FOOD_ITEMS_KEY);
+        return data ? JSON.parse(data) : [];
+    } catch (error) {
+        console.error('Error loading food items:', error);
+        return [];
+    }
+};
+
+export const saveFoodItems = async (items: FoodItem[]): Promise<void> => {
+    try {
+        await AsyncStorage.setItem(FOOD_ITEMS_KEY, JSON.stringify(items));
+    } catch (error) {
+        console.error('Error saving food items:', error);
+    }
+};
+
+export const getAllFoodItems = async (): Promise<FoodItem[]> => {
+    return loadFoodItems();
+};
+
+export const saveFoodItem = async (item: { name: string; calories: number; emoji?: string }): Promise<void> => {
+    const items = await loadFoodItems();
+    items.push({ id: Date.now().toString(), ...item });
+    await saveFoodItems(items);
+};
+
+export const loadStepData = async (dateString: string): Promise<StepData | null> => {
+    try {
+        const simpleSteps = await AsyncStorage.getItem(`steps:${dateString}`);
+        if (simpleSteps !== null) {
+            return {
+                date: dateString,
+                steps: parseInt(simpleSteps, 10),
+                baseline: 0
+            };
+        }
+        const data = await AsyncStorage.getItem(STEP_DATA_PREFIX + dateString);
+        return data ? JSON.parse(data) : null;
+    } catch (error) {
+        return null;
+    }
+};
+
+export const saveStepData = async (dateString: string, steps: number, baseline: number = 0): Promise<void> => {
+    try {
+        const data: StepData = { date: dateString, steps, baseline };
+        await AsyncStorage.setItem(STEP_DATA_PREFIX + dateString, JSON.stringify(data));
+    } catch (error) {
+        console.error('Error saving step data:', error);
+    }
+};
+
+export const loadStreakState = async (): Promise<StreakState | null> => {
+    try {
+        const data = await AsyncStorage.getItem(STREAK_STATE_KEY);
+        return data ? JSON.parse(data) : null;
+    } catch (error) {
+        return null;
+    }
+};
+
+export const saveStreakState = async (state: StreakState): Promise<void> => {
+    try {
+        await AsyncStorage.setItem(STREAK_STATE_KEY, JSON.stringify(state));
+    } catch (error) {
+        console.error('Error saving streak state:', error);
+    }
+};
+
+export const resetAllData = async (): Promise<void> => {
+    await AsyncStorage.clear();
+};
+
+export const loadSubscription = async (): Promise<SubscriptionData | null> => {
+    try {
+        const data = await AsyncStorage.getItem(SUBSCRIPTION_KEY);
+        return data ? JSON.parse(data) : null;
+    } catch (error) {
+        return null;
+    }
+};
+
+export const saveSubscription = async (subscription: SubscriptionData): Promise<void> => {
+    try {
+        await AsyncStorage.setItem(SUBSCRIPTION_KEY, JSON.stringify(subscription));
+    } catch (error) {
+        console.error('Error saving subscription:', error);
+    }
+};
+
+export const loadUnlockedBadges = async (): Promise<string[]> => {
+    try {
+        const data = await AsyncStorage.getItem(ACHIEVEMENTS_KEY);
+        return data ? JSON.parse(data) : [];
+    } catch (error) {
+        return [];
+    }
+};
+
+export const saveUnlockedBadge = async (badgeId: string): Promise<void> => {
+    try {
+        const current = await loadUnlockedBadges();
+        if (!current.includes(badgeId)) {
+            const updated = [...current, badgeId];
+            await AsyncStorage.setItem(ACHIEVEMENTS_KEY, JSON.stringify(updated));
+        }
+    } catch (error) {
+        console.error('Error saving achievement:', error);
+    }
+};

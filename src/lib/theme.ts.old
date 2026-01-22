@@ -1,0 +1,239 @@
+import { colors, spacing, radius, shadows, typography, glass } from '../theme/designSystem';
+
+// Enhanced Token Interface that supports BOTH new colors object and legacy flat properties
+// This is critical to prevent hundreds of "Property 'primary' does not exist" errors
+// whilst continuing to support the new "theme.colors" requirement.
+export interface Theme {
+    // New Standard
+    colors: {
+        background: string;
+        surface: string;
+        surfaceAlt: string;
+        card: string;
+        primary: string;
+        primaryDark: string;
+        primaryLight: string; // Added missing token
+        primarySoft: string;
+        secondary: string;
+        accent: string;
+        text: string;
+        textSecondary: string;
+        textTertiary: string;
+        border: string;
+        success: string;
+        warning: string;
+        error: string;
+        info: string;
+        backdrop: string;
+
+        // Chip Tokens
+        chipDefaultBg: string;
+        chipActiveBg: string;
+        chipBorder: string;
+        chipTextDefault: string;
+        chipTextActive: string;
+
+        // Icon Tokens
+        iconDefault: string;
+        iconPrimary: string;
+        iconMuted: string;
+        iconDanger: string;
+
+        streak: string;
+
+        // Ring Tokens (Shiny/Attractive)
+        ringCalories: string;
+        ringProtein: string;
+    };
+
+    // Legacy / Flat Accessors (Proxies to colors)
+    background: string;
+    surface: string;
+    surfaceAlt: string;
+    card: string;
+    primary: string;
+    primaryDark: string;
+    primarySoft: string;
+    secondary: string;
+    accent: string;
+    text: string;
+    textSecondary: string;
+    textTertiary: string;
+    border: string;
+    success: string;
+    warning: string;
+    error: string;
+    info: string;
+    backdrop: string;
+    danger: string;
+
+
+    // Non-color Tokens
+    spacing: typeof spacing;
+    radius: typeof radius;
+    shadows: typeof shadows;
+    typography: typeof typography;
+    glass: typeof glass; // Restored glass object
+}
+
+export const lightTheme: Theme = {
+    colors: {
+        background: colors.backgroundLight,
+        surface: colors.surfaceLight,
+        surfaceAlt: colors.surfaceHighlightLight,
+        card: colors.surfaceLight,
+
+        primary: colors.primary,
+        primaryDark: colors.primaryDark,
+        primaryLight: colors.primaryLight,
+        primarySoft: colors.primaryLight + '20',
+        secondary: colors.accent,
+        accent: colors.accent,
+
+        text: colors.textPrimaryLight,
+        textSecondary: colors.textSecondaryLight,
+        textTertiary: colors.slate400,
+
+        border: colors.borderLight,
+
+        success: colors.success,
+        warning: colors.warning,
+        error: colors.error,
+        info: colors.info,
+
+        backdrop: 'rgba(0,0,0,0.3)',
+
+        // Chip Tokens
+        chipDefaultBg: colors.slate100,
+        chipActiveBg: colors.primary + '15',
+        chipBorder: 'transparent',
+        chipTextDefault: colors.slate500,
+        chipTextActive: colors.primary,
+
+        // Icon Tokens
+        iconDefault: colors.slate500,
+        iconPrimary: colors.primary,
+        iconMuted: colors.slate400,
+        iconDanger: colors.error,
+
+        streak: '#f97316',
+
+        // Attractive/Shiny Rings
+        ringCalories: '#f43f5e', // Rose-500 (Coral/Red)
+        ringProtein: '#f59e0b',  // Amber-500 (Gold/Orange)
+    },
+
+    // Flat properties (Duplicated for compat)
+    background: colors.backgroundLight,
+    surface: colors.surfaceLight,
+    surfaceAlt: colors.surfaceHighlightLight,
+    card: colors.surfaceLight,
+    primary: colors.primary,
+    primaryDark: colors.primaryDark,
+    primarySoft: colors.primaryLight + '20',
+    secondary: colors.accent,
+    accent: colors.accent,
+    text: colors.textPrimaryLight,
+    textSecondary: colors.textSecondaryLight,
+    textTertiary: colors.slate400,
+    border: colors.borderLight,
+    success: colors.success,
+    warning: colors.warning,
+    error: colors.error,
+    info: colors.info,
+    backdrop: 'rgba(0,0,0,0.3)',
+    danger: colors.error,
+
+    spacing,
+    radius,
+    shadows,
+    typography: {
+        ...typography,
+        heading1: { ...typography.heading1, color: colors.textPrimaryLight },
+        heading2: { ...typography.heading2, color: colors.textPrimaryLight },
+        title: { ...typography.title, color: colors.textPrimaryLight },
+        body: { ...typography.body, color: colors.textSecondaryLight },
+    },
+    glass,
+};
+
+export const darkTheme: Theme = {
+    colors: {
+        background: colors.backgroundDark,
+        surface: colors.surfaceDark,
+        surfaceAlt: colors.surfaceHighlightDark,
+        card: colors.surfaceDark,
+
+        primary: colors.primary,
+        primaryDark: colors.primaryLight,
+        primaryLight: colors.primaryLight, // Keep consistent or adjust for dark mode
+        primarySoft: colors.primary + '25',
+        secondary: colors.accent,
+        accent: colors.accent,
+
+        text: colors.textPrimaryDark,
+        textSecondary: colors.textSecondaryDark,
+        textTertiary: colors.slate600,
+
+        border: colors.borderDark,
+
+        success: colors.success,
+        warning: colors.warning,
+        error: colors.error,
+        info: colors.info,
+
+        backdrop: 'rgba(0,0,0,0.6)',
+
+        // Chip Tokens
+        chipDefaultBg: colors.slate700,
+        chipActiveBg: colors.primary + '25',
+        chipBorder: 'transparent',
+        chipTextDefault: colors.slate300,
+        chipTextActive: colors.white,
+
+        // Icon Tokens
+        iconDefault: colors.slate400,
+        iconPrimary: colors.primary,
+        iconMuted: colors.slate600,
+        iconDanger: colors.error,
+
+        streak: '#fb923c',
+
+        // Attractive/Shiny Rings
+        ringCalories: '#ef4444', // Red-500 (Classic Calorie Burn Color)
+        ringProtein: '#f59e0b',  // Amber-500 (Gold)
+    },
+
+    // Flat properties (Duplicated for compat)
+    background: colors.backgroundDark,
+    surface: colors.surfaceDark,
+    surfaceAlt: colors.surfaceHighlightDark,
+    card: colors.surfaceDark,
+    primary: colors.primary,
+    primaryDark: colors.primaryLight,
+    primarySoft: colors.primary + '25',
+    secondary: colors.accent,
+    accent: colors.accent,
+    text: colors.textPrimaryDark,
+    textSecondary: colors.textSecondaryDark,
+    textTertiary: colors.slate600,
+    border: colors.borderDark,
+    success: colors.success,
+    warning: colors.warning,
+    error: colors.error,
+    info: colors.info,
+    backdrop: 'rgba(0,0,0,0.6)',
+    danger: colors.error,
+
+    spacing,
+    radius,
+    shadows,
+    typography: {
+        ...typography,
+        heading1: { ...typography.heading1, color: colors.textPrimaryDark },
+        heading2: { ...typography.heading2, color: colors.textPrimaryDark },
+        title: { ...typography.title, color: colors.textPrimaryDark },
+        body: { ...typography.body, color: colors.textSecondaryDark },
+    },
+    glass,
+};

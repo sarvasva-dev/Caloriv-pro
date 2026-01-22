@@ -1,0 +1,284 @@
+import { API_CONFIG } from '../config/api';
+import { storage, StorageKeys } from '../lib/storage';
+
+const API_URL = API_CONFIG.BASE_URL;
+
+interface RegisterData {
+    email: string;
+    password: string;
+    name: string;
+    age?: number;
+    gender?: string;
+    height?: number;
+    currentWeight?: number;
+    targetWeight?: number;
+    goal?: string;
+    stepGoal?: number;
+    waterGoal?: number;
+    // New Fields
+    mealsPerDay?: number;
+    cuisines?: string[]; // JSON stringified for backend? Or array if backend supports it. Assuming Array for TS.
+    diet?: string;
+    likedFoods?: string[];
+    dislikedFoods?: string[];
+    fitnessLevel?: string;
+    workoutDays?: number;
+    equipment?: string;
+    duration?: number;
+    additionalInfo?: string;
+}
+
+interface LoginData {
+    email: string;
+    password: string;
+}
+
+interface AuthResponse {
+    success: boolean;
+    token?: string;
+    user?: any;
+    error?: string;
+    message?: string;
+}
+
+interface HealthHistoryResponse {
+    success: boolean;
+    data?: any[];
+    error?: string;
+}
+
+class AuthService {
+    // Register new user
+    async register(data: RegisterData): Promise<AuthResponse> {
+        try {
+            const response = await fetch(`${API_URL}/auth/register`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data),
+            });
+
+            const result = await response.json();
+
+            if (result.success && result.token) {
+                // Save token and user data (Synchronously via MMKV)
+                storage.set(StorageKeys.AUTH_TOKEN, result.token);
+                storage.set(StorageKeys.USER_DATA, JSON.stringify(result.user));
+            }
+
+            return result;
+        } catch (error) {
+            console.error('Register error:', error);
+            return {
+                success: false,
+                error: error instanceof Error ? error.message : 'Network error. Please check your connection.',
+            };
+        }
+    }
+
+    // Login user
+    async login(data: LoginData): Promise<AuthResponse> {
+        try {
+            const response = await fetch(`${API_URL}/auth/login`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data),
+            });
+
+            const result = await response.json();
+
+            if (result.success && result.token) {
+                // Save token and user data (Synchronously via MMKV)
+                storage.set(StorageKeys.AUTH_TOKEN, result.token);
+                storage.set(StorageKeys.USER_DATA, JSON.stringify(result.user));
+            }
+
+            return result;
+        } catch (error) {
+            console.error('Login error:', error);
+            return {
+                success: false,
+                error: error instanceof Error ? error.message : 'Network error. Please check your connection.',
+            };
+        }
+    }
+
+    // Get user profile
+    async getProfile(): Promise<AuthResponse> {
+        try {
+            const token = storage.getString(StorageKeys.AUTH_TOKEN);
+
+            if (!token) {
+                return { success: false, error: 'No token found' };
+            }
+
+            const response = await fetch(`${API_URL}/users/profile`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                },
+            });
+
+            if (response.status === 404 || response.status === 401) {
+                return { success: false, error: 'session_invalid' };
+            }
+
+            const result = await response.json();
+
+            if (result.success && result.user) {
+                storage.set(StorageKeys.USER_DATA, JSON.stringify(result.user));
+            }
+
+            return result;
+        } catch (error) {
+            console.error('Get profile error:', error);
+            return {
+                success: false,
+                error: 'Network error. Please check your connection.',
+            };
+        }
+    }
+
+    // Update user profile
+    async updateProfile(data: Partial<RegisterData>): Promise<AuthResponse> {
+        try {
+            const token = storage.getString(StorageKeys.AUTH_TOKEN);
+
+            if (!token) {
+                return { success: false, error: 'No token found' };
+            }
+
+            const response = await fetch(`${API_URL}/users/profile`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                },
+                body: JSON.stringify(data),
+            });
+
+            if (response.status === 404 || response.status === 401) {
+                return { success: false, error: 'session_invalid' };
+            }
+
+            const result = await response.json();
+
+            if (result.success && result.user) {
+                storage.set(StorageKeys.USER_DATA, JSON.stringify(result.user));
+            }
+
+            return result;
+        } catch (error) {
+            console.error('Update profile error:', error);
+            return {
+                success: false,
+                error: 'Network error. Please check your connection.',
+            };
+        }
+    }
+
+    // Logout
+    async logout(): Promise<void> {
+        try {
+            storage.delete(StorageKeys.AUTH_TOKEN);
+            storage.delete(StorageKeys.USER_DATA);
+        } catch (error) {
+            console.error('Logout error:', error);
+        }
+    }
+
+    // Check if user is logged in
+    async isLoggedIn(): Promise<boolean> {
+        try {
+            const token = storage.getString(StorageKeys.AUTH_TOKEN);
+            return !!token;
+        } catch (error) {
+            return false;
+        }
+    }
+
+    // Get stored user data
+    async getUserData(): Promise<any | null> {
+        try {
+            const userData = storage.getString(StorageKeys.USER_DATA);
+            return userData ? JSON.parse(userData) : null;
+        } catch (error) {
+            return null;
+        }
+    }
+
+    async getToken(): Promise<string | null> {
+        try {
+            return storage.getString(StorageKeys.AUTH_TOKEN) || null;
+        } catch (error) {
+            return null;
+        }
+    }
+
+    async syncDailyLog(date: string, data: any): Promise<{ success: boolean; error?: string }> {
+        try {
+            const token = storage.getString(StorageKeys.AUTH_TOKEN);
+            if (!token) return { success: false, error: 'No token' };
+
+            const response = await fetch(`${API_URL}/users/daily-log`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ date, ...data })
+            });
+
+            const result = await response.json();
+            return result;
+        } catch (error) {
+            console.error('Sync error:', error);
+            return { success: false, error: 'Network error' };
+        }
+    }
+
+    async getHealthHistory(): Promise<HealthHistoryResponse> {
+        try {
+            const token = storage.getString(StorageKeys.AUTH_TOKEN);
+            if (!token) return { success: false, error: 'No token' };
+
+            const response = await fetch(`${API_URL}/users/health-history`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (response.status === 404 || response.status === 401) {
+                return { success: false, error: 'session_invalid' };
+            }
+
+            const result = await response.json();
+            return { success: true, data: result.data || [] }; // Assuming API returns { data: [...] }
+        } catch (error) {
+            console.error('Get health history error:', error);
+            return { success: false, error: 'Network error' };
+        }
+    }
+
+    async getMeasurements(): Promise<{ success: boolean; data?: any[] }> {
+        // Placeholder for now, can implement real API later if needed
+        try {
+            const token = storage.getString(StorageKeys.AUTH_TOKEN);
+            if (!token) return { success: false };
+
+            // Fake empty for now to satisfy call signature
+            return { success: true, data: [] };
+        } catch (e) {
+            return { success: false };
+        }
+    }
+}
+
+export const authService = new AuthService();
+export default authService;
